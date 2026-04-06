@@ -31,7 +31,7 @@ SaveGameUsecase saveGameUsecase(Ref ref) {
 }
 
 @riverpod
-LoadGameUsecase oadGameUsecase(Ref ref) {
+LoadGameUsecase loadGameUsecase(Ref ref) {
   final repository = ref.watch(sudokuRepositoryProvider);
   return LoadGameUsecase(repository);
 }

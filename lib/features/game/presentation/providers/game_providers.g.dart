@@ -185,26 +185,26 @@ final class SaveGameUsecaseProvider
 
 String _$saveGameUsecaseHash() => r'36b458232f2122a7a0eef5a0667c4395d63ca8e6';
 
-@ProviderFor(oadGameUsecase)
-final oadGameUsecaseProvider = OadGameUsecaseProvider._();
+@ProviderFor(loadGameUsecase)
+final loadGameUsecaseProvider = LoadGameUsecaseProvider._();
 
-final class OadGameUsecaseProvider
+final class LoadGameUsecaseProvider
     extends
         $FunctionalProvider<LoadGameUsecase, LoadGameUsecase, LoadGameUsecase>
     with $Provider<LoadGameUsecase> {
-  OadGameUsecaseProvider._()
+  LoadGameUsecaseProvider._()
     : super(
         from: null,
         argument: null,
         retry: null,
-        name: r'oadGameUsecaseProvider',
+        name: r'loadGameUsecaseProvider',
         isAutoDispose: true,
         dependencies: null,
         $allTransitiveDependencies: null,
       );
 
   @override
-  String debugGetCreateSourceHash() => _$oadGameUsecaseHash();
+  String debugGetCreateSourceHash() => _$loadGameUsecaseHash();
 
   @$internal
   @override
@@ -213,7 +213,7 @@ final class OadGameUsecaseProvider
 
   @override
   LoadGameUsecase create(Ref ref) {
-    return oadGameUsecase(ref);
+    return loadGameUsecase(ref);
   }
 
   /// {@macro riverpod.override_with_value}
@@ -225,4 +225,4 @@ final class OadGameUsecaseProvider
   }
 }
 
-String _$oadGameUsecaseHash() => r'8f5c28794aeac4ab9729914063334a6fde32254a';
+String _$loadGameUsecaseHash() => r'ae74f8a5989687f5cb7c688c56c139da26120fff';
