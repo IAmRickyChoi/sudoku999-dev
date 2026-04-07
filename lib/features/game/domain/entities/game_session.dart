@@ -8,7 +8,7 @@ class GameSession {
 
   GameSession({
     required this.board,
-    required this.mistakes,
-    required this.status,
+    this.mistakes = 0,
+    this.status = GameStatus.initial,
   });
 }
