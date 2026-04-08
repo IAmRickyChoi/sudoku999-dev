@@ -15,6 +15,7 @@ class GameSessionModel {
 
   late int seed;
   late int mistakes;
+  late int elapsedSeconds;
 
   late List<CellModel> cells;
 }

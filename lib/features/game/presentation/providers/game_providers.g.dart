@@ -226,3 +226,55 @@ final class LoadGameUsecaseProvider
 }
 
 String _$loadGameUsecaseHash() => r'ae74f8a5989687f5cb7c688c56c139da26120fff';
+
+@ProviderFor(SelectedCell)
+final selectedCellProvider = SelectedCellProvider._();
+
+final class SelectedCellProvider
+    extends $NotifierProvider<SelectedCell, ({int col, int row})?> {
+  SelectedCellProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'selectedCellProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$selectedCellHash();
+
+  @$internal
+  @override
+  SelectedCell create() => SelectedCell();
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(({int col, int row})? value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<({int col, int row})?>(value),
+    );
+  }
+}
+
+String _$selectedCellHash() => r'3b7db878a7da0593944838b6763414fe1f1671b4';
+
+abstract class _$SelectedCell extends $Notifier<({int col, int row})?> {
+  ({int col, int row})? build();
+  @$mustCallSuper
+  @override
+  void runBuild() {
+    final ref = this.ref as $Ref<({int col, int row})?, ({int col, int row})?>;
+    final element =
+        ref.element
+            as $ClassProviderElement<
+              AnyNotifier<({int col, int row})?, ({int col, int row})?>,
+              ({int col, int row})?,
+              Object?,
+              Object?
+            >;
+    element.handleCreate(ref, build);
+  }
+}

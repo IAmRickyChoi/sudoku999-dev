@@ -16,6 +16,7 @@ class SudokuRepositoryImpl implements SudokuRepository {
       ..difficulty = gameSession.board.difficulty
       ..seed = gameSession.board.seed
       ..mistakes = gameSession.mistakes
+      ..elapsedSeconds = gameSession.elapsedSeconds
       ..cells = gameSession.board.cells
           .expand((row) => row)
           .map(
@@ -27,16 +28,17 @@ class SudokuRepositoryImpl implements SudokuRepository {
           .toList();
 
     await isar.writeTxn(() async {
-      // await isar.gameSessionModels.clear();
+      await isar.gameSessionModels.clear();
       await isar.gameSessionModels.put(model);
     });
   }
 
   @override
   Future<GameSession?> loadGame() async {
-    final model = await isar.gameSessionModels
-        .where(sort: Sort.desc)
-        .findFirst();
+    final model = await isar.gameSessionModels.where().findFirst();
+    // final model = await isar.gameSessionModels
+    //     .where(sort: Sort.desc)
+    //     .findFirst();
     if (model == null) return null;
 
     List<List<Cell>> grid = List.generate(9, (row) {
@@ -62,6 +64,7 @@ class SudokuRepositoryImpl implements SudokuRepository {
       board: sudokuBoard,
       mistakes: model.mistakes,
       status: model.gameStatus,
+      elapsedSeconds: model.elapsedSeconds,
     );
   }
 

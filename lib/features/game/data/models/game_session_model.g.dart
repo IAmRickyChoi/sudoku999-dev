@@ -30,14 +30,19 @@ const GameSessionModelSchema = CollectionSchema(
       type: IsarType.byte,
       enumMap: _GameSessionModeldifficultyEnumValueMap,
     ),
-    r'gameStatus': PropertySchema(
+    r'elapsedSeconds': PropertySchema(
       id: 2,
+      name: r'elapsedSeconds',
+      type: IsarType.long,
+    ),
+    r'gameStatus': PropertySchema(
+      id: 3,
       name: r'gameStatus',
       type: IsarType.byte,
       enumMap: _GameSessionModelgameStatusEnumValueMap,
     ),
-    r'mistakes': PropertySchema(id: 3, name: r'mistakes', type: IsarType.long),
-    r'seed': PropertySchema(id: 4, name: r'seed', type: IsarType.long),
+    r'mistakes': PropertySchema(id: 4, name: r'mistakes', type: IsarType.long),
+    r'seed': PropertySchema(id: 5, name: r'seed', type: IsarType.long),
   },
 
   estimateSize: _gameSessionModelEstimateSize,
@@ -85,9 +90,10 @@ void _gameSessionModelSerialize(
     object.cells,
   );
   writer.writeByte(offsets[1], object.difficulty.index);
-  writer.writeByte(offsets[2], object.gameStatus.index);
-  writer.writeLong(offsets[3], object.mistakes);
-  writer.writeLong(offsets[4], object.seed);
+  writer.writeLong(offsets[2], object.elapsedSeconds);
+  writer.writeByte(offsets[3], object.gameStatus.index);
+  writer.writeLong(offsets[4], object.mistakes);
+  writer.writeLong(offsets[5], object.seed);
 }
 
 GameSessionModel _gameSessionModelDeserialize(
@@ -110,14 +116,15 @@ GameSessionModel _gameSessionModelDeserialize(
         offsets[1],
       )] ??
       Difficulty.easy;
+  object.elapsedSeconds = reader.readLong(offsets[2]);
   object.gameStatus =
       _GameSessionModelgameStatusValueEnumMap[reader.readByteOrNull(
-        offsets[2],
+        offsets[3],
       )] ??
       GameStatus.initial;
   object.id = id;
-  object.mistakes = reader.readLong(offsets[3]);
-  object.seed = reader.readLong(offsets[4]);
+  object.mistakes = reader.readLong(offsets[4]);
+  object.seed = reader.readLong(offsets[5]);
   return object;
 }
 
@@ -144,14 +151,16 @@ P _gameSessionModelDeserializeProp<P>(
               Difficulty.easy)
           as P;
     case 2:
+      return (reader.readLong(offset)) as P;
+    case 3:
       return (_GameSessionModelgameStatusValueEnumMap[reader.readByteOrNull(
                 offset,
               )] ??
               GameStatus.initial)
           as P;
-    case 3:
-      return (reader.readLong(offset)) as P;
     case 4:
+      return (reader.readLong(offset)) as P;
+    case 5:
       return (reader.readLong(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
@@ -379,6 +388,61 @@ extension GameSessionModelQueryFilter
       return query.addFilterCondition(
         FilterCondition.between(
           property: r'difficulty',
+          lower: lower,
+          includeLower: includeLower,
+          upper: upper,
+          includeUpper: includeUpper,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<GameSessionModel, GameSessionModel, QAfterFilterCondition>
+  elapsedSecondsEqualTo(int value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.equalTo(property: r'elapsedSeconds', value: value),
+      );
+    });
+  }
+
+  QueryBuilder<GameSessionModel, GameSessionModel, QAfterFilterCondition>
+  elapsedSecondsGreaterThan(int value, {bool include = false}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(
+          include: include,
+          property: r'elapsedSeconds',
+          value: value,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<GameSessionModel, GameSessionModel, QAfterFilterCondition>
+  elapsedSecondsLessThan(int value, {bool include = false}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.lessThan(
+          include: include,
+          property: r'elapsedSeconds',
+          value: value,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<GameSessionModel, GameSessionModel, QAfterFilterCondition>
+  elapsedSecondsBetween(
+    int lower,
+    int upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.between(
+          property: r'elapsedSeconds',
           lower: lower,
           includeLower: includeLower,
           upper: upper,
@@ -639,6 +703,20 @@ extension GameSessionModelQuerySortBy
   }
 
   QueryBuilder<GameSessionModel, GameSessionModel, QAfterSortBy>
+  sortByElapsedSeconds() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'elapsedSeconds', Sort.asc);
+    });
+  }
+
+  QueryBuilder<GameSessionModel, GameSessionModel, QAfterSortBy>
+  sortByElapsedSecondsDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'elapsedSeconds', Sort.desc);
+    });
+  }
+
+  QueryBuilder<GameSessionModel, GameSessionModel, QAfterSortBy>
   sortByGameStatus() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'gameStatus', Sort.asc);
@@ -693,6 +771,20 @@ extension GameSessionModelQuerySortThenBy
   thenByDifficultyDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'difficulty', Sort.desc);
+    });
+  }
+
+  QueryBuilder<GameSessionModel, GameSessionModel, QAfterSortBy>
+  thenByElapsedSeconds() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'elapsedSeconds', Sort.asc);
+    });
+  }
+
+  QueryBuilder<GameSessionModel, GameSessionModel, QAfterSortBy>
+  thenByElapsedSecondsDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'elapsedSeconds', Sort.desc);
     });
   }
 
@@ -761,6 +853,13 @@ extension GameSessionModelQueryWhereDistinct
   }
 
   QueryBuilder<GameSessionModel, GameSessionModel, QDistinct>
+  distinctByElapsedSeconds() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'elapsedSeconds');
+    });
+  }
+
+  QueryBuilder<GameSessionModel, GameSessionModel, QDistinct>
   distinctByGameStatus() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'gameStatus');
@@ -800,6 +899,13 @@ extension GameSessionModelQueryProperty
   difficultyProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'difficulty');
+    });
+  }
+
+  QueryBuilder<GameSessionModel, int, QQueryOperations>
+  elapsedSecondsProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'elapsedSeconds');
     });
   }
 

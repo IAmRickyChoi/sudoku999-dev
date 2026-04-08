@@ -35,3 +35,22 @@ LoadGameUsecase loadGameUsecase(Ref ref) {
   final repository = ref.watch(sudokuRepositoryProvider);
   return LoadGameUsecase(repository);
 }
+
+@riverpod
+class SelectedCell extends _$SelectedCell {
+  @override
+  ({int row, int col})? build() {
+    // 초기값은 아무것도 선택되지 않은 상태(null)
+    return null;
+  }
+
+  // 선택된 칸을 업데이트하는 메서드(メソッド)
+  void update(int row, int col) {
+    state = (row: row, col: col);
+  }
+
+  // 선택을 해제하는 메서드
+  void clear() {
+    state = null;
+  }
+}
