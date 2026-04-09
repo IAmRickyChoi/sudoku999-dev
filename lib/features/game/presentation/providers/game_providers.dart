@@ -1,5 +1,5 @@
-import 'package:isar_community/isar.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:sudoku_999/features/auth/presentation/providers/auth_notifier.dart';
 import 'package:sudoku_999/features/game/data/repositories/sudoku_repository_impl.dart';
 import 'package:sudoku_999/features/game/domain/repositories/sudoku_repository.dart';
 import 'package:sudoku_999/features/game/domain/use_cases/generate_sudoku_usecase.dart';
@@ -8,15 +8,16 @@ import 'package:sudoku_999/features/game/domain/use_cases/save_game_usecase.dart
 
 part 'game_providers.g.dart';
 
-@Riverpod(keepAlive: true)
-Isar isar(Ref ref) {
-  throw UnimplementedError();
-}
+// 기존에 있던 Isar Provider는 삭제했습니다!
 
 @riverpod
 SudokuRepository sudokuRepository(Ref ref) {
-  final isar = ref.watch(isarProvider);
-  return SudokuRepositoryImpl(isar);
+  // authProvider를 구독하여 현재 로그인한 유저 정보를 가져옵니다. (ユーザー情報の取得)
+  final user = ref.watch(authProvider).value;
+  final username = user?.username ?? 'guest';
+
+  // 리포지토리에 유저 이름을 주입(注入, ちゅうにゅう)합니다.
+  return SudokuRepositoryImpl(username);
 }
 
 @riverpod
@@ -40,16 +41,13 @@ LoadGameUsecase loadGameUsecase(Ref ref) {
 class SelectedCell extends _$SelectedCell {
   @override
   ({int row, int col})? build() {
-    // 초기값은 아무것도 선택되지 않은 상태(null)
     return null;
   }
 
-  // 선택된 칸을 업데이트하는 메서드(メソッド)
   void update(int row, int col) {
     state = (row: row, col: col);
   }
 
-  // 선택을 해제하는 메서드
   void clear() {
     state = null;
   }

@@ -1,3 +1,4 @@
+import 'dart:math'; // min 함수 사용을 위해 추가
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/material.dart';
 import 'package:sudoku_999/features/game/presentation/providers/game_notifier.dart';
@@ -10,15 +11,14 @@ class NumberPad extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final selectedCell = ref.watch(selectedCellProvider);
 
-    // 버튼 크기를 화면 너비에 맞춰서 동적으로 설정
     final screenWidth = MediaQuery.of(context).size.width;
-    final btnSize = (screenWidth - 40) / 6; // 한 줄에 5개 + 여백 고려
+    // [수정됨] 버튼 최대 크기를 65 픽셀로 제한하여 데스크톱 레이아웃 붕괴 방지 (レイアウト崩れ防止)
+    final btnSize = min((screenWidth - 40) / 6, 65.0);
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16.0),
       child: Column(
         children: [
-          // 윗 줄 (1 ~ 5)
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [1, 2, 3, 4, 5]
@@ -29,7 +29,6 @@ class NumberPad extends ConsumerWidget {
                 .toList(),
           ),
           const SizedBox(height: 12),
-          // 아랫 줄 (6 ~ 9, 지우기)
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
@@ -37,7 +36,7 @@ class NumberPad extends ConsumerWidget {
                 (i) =>
                     _buildButton(ref, selectedCell, i.toString(), i, btnSize),
               ),
-              _buildEraseButton(ref, selectedCell, btnSize), // 지우기 버튼
+              _buildEraseButton(ref, selectedCell, btnSize),
             ],
           ),
         ],
@@ -45,7 +44,6 @@ class NumberPad extends ConsumerWidget {
     );
   }
 
-  // 일반 숫자 버튼
   Widget _buildButton(
     WidgetRef ref,
     ({int row, int col})? selectedCell,
@@ -69,7 +67,7 @@ class NumberPad extends ConsumerWidget {
         },
         child: SizedBox(
           width: size,
-          height: size * 1.1, // 살짝 길쭉하게
+          height: size * 1.1,
           child: Center(
             child: Text(
               text,
@@ -85,14 +83,13 @@ class NumberPad extends ConsumerWidget {
     );
   }
 
-  // 지우기 전용 아이콘 버튼
   Widget _buildEraseButton(
     WidgetRef ref,
     ({int row, int col})? selectedCell,
     double size,
   ) {
     return Material(
-      color: Colors.red[50], // 지우기는 빨간 톤으로 구분
+      color: Colors.red[50],
       elevation: 2,
       shadowColor: Colors.red[100],
       borderRadius: BorderRadius.circular(16),

@@ -5,8 +5,7 @@ import 'package:sudoku_999/features/auth/domain/repositories/auth_repository.dar
 
 class AuthRepositoryImpl implements AuthRepository {
   // NAS의 IP 주소로 변경하세요. (에뮬레이터 테스트 시 로컬호스트 사용)
-  final String baseUrl = 'http://10.0.2.2:8080/api';
-
+  final String baseUrl = 'http://192.168.1.163:8080/api'; // NAS 백엔드 주소
   @override
   Future<User> login(String username, String password) async {
     final response = await http.post(

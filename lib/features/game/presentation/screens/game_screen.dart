@@ -1,9 +1,11 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:sudoku_999/features/game/domain/entities/difficulty.dart';
 import 'package:sudoku_999/features/game/presentation/providers/game_notifier.dart';
 import 'package:sudoku_999/features/game/presentation/providers/game_providers.dart';
 import 'package:sudoku_999/features/game/presentation/providers/timer_provider.dart';
+import 'package:sudoku_999/features/game/presentation/providers/vs_notifier.dart';
 import 'package:sudoku_999/features/game/presentation/screens/number_pad.dart';
 
 class GameScreen extends ConsumerWidget {
@@ -12,10 +14,19 @@ class GameScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final gameStatus = ref.watch(gameProvider);
+    final vsState = ref.watch(vsProvider);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FA), // 살짝 부드러운 배경색
+      backgroundColor: const Color(0xFFF8F9FA),
       appBar: AppBar(
+        leading: BackButton(
+          onPressed: () {
+            if (vsState.status != VsStatus.disconnected) {
+              ref.read(vsProvider.notifier).disconnect();
+            }
+            context.pop();
+          },
+        ),
         title: const Text(
           'Clean Sudoku',
           style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1.2),
@@ -24,20 +35,25 @@ class GameScreen extends ConsumerWidget {
         backgroundColor: Colors.transparent,
         elevation: 0,
         actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh_rounded, size: 28),
-            onPressed: () {
-              final newSeed = DateTime.now().millisecondsSinceEpoch;
-              ref
-                  .read(gameProvider.notifier)
-                  .startGame(newSeed, Difficulty.easy);
-            },
-          ),
+          if (vsState.status != VsStatus.matched)
+            IconButton(
+              icon: const Icon(Icons.refresh_rounded, size: 28),
+              onPressed: () {
+                final newSeed = DateTime.now().millisecondsSinceEpoch;
+                ref
+                    .read(gameProvider.notifier)
+                    .startGame(newSeed, Difficulty.medium);
+              },
+            ),
         ],
       ),
       body: gameStatus.when(
         data: (session) {
           if (session == null) {
+            if (vsState.status == VsStatus.matched) {
+              return const Center(child: CircularProgressIndicator());
+            }
+
             return Center(
               child: FilledButton.icon(
                 style: FilledButton.styleFrom(
@@ -49,64 +65,83 @@ class GameScreen extends ConsumerWidget {
                     borderRadius: BorderRadius.circular(16),
                   ),
                 ),
-                onPressed: () => ref
-                    .read(gameProvider.notifier)
-                    .startGame(
-                      DateTime.now().millisecondsSinceEpoch,
-                      Difficulty.easy,
-                    ),
+                onPressed: () =>
+                    ref.read(gameProvider.notifier).loadSavedGame(),
                 icon: const Icon(Icons.play_arrow_rounded),
                 label: const Text(
-                  '새 게임 시작',
+                  '싱글 플레이 이어하기',
                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
               ),
             );
           }
+
+          // 화면 진행도 계산: 빈칸 기준 (UI表示用の計算)
+          int totalEmptyCells = 0;
+          int filledEmptyCells = 0;
+
+          for (var row in session.board.cells) {
+            for (var cell in row) {
+              if (!cell.isGiven) {
+                totalEmptyCells++;
+                if (cell.currentValue != null && cell.currentValue != 0) {
+                  filledEmptyCells++;
+                }
+              }
+            }
+          }
+
+          double myProgress = 0.0;
+          if (totalEmptyCells > 0) {
+            myProgress = filledEmptyCells / totalEmptyCells.toDouble();
+          }
+          final double opProgress = vsState.opponentProgress / 100.0;
+
           return Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Padding(
-                padding: const EdgeInsets.symmetric(
-                  vertical: 16.0,
-                  horizontal: 24.0,
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween, // 양끝 정렬
-                  children: [
-                    // 기존 Mistakes 표시 (좌측)
-                    Row(
-                      children: [
-                        Icon(
-                          Icons.close_rounded,
-                          color: Colors.red[400],
-                          size: 24,
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Mistakes : ${session.mistakes} / 3',
-                          style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.black54,
+              if (vsState.status == VsStatus.matched)
+                VsProgressWidget(myProgress: myProgress, opProgress: opProgress)
+              else
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                    vertical: 16.0,
+                    horizontal: 24.0,
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.close_rounded,
+                            color: Colors.red[400],
+                            size: 24,
                           ),
-                        ),
-                      ],
-                    ),
-                    // 새로 만든 타이머 표시 (우측)
-                    const TimerWidget(),
-                  ],
+                          const SizedBox(width: 8),
+                          Text(
+                            'Mistakes : ${session.mistakes} / 3',
+                            style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.black54,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const TimerWidget(),
+                    ],
+                  ),
                 ),
-              ),
-              // 스도쿠 판 (그림자 및 테두리 효과)
+
               Expanded(
                 child: Center(
                   child: AspectRatio(
-                    aspectRatio: 1, // 완벽한 정사각형 유지
+                    aspectRatio: 1,
                     child: Container(
                       margin: const EdgeInsets.symmetric(
                         horizontal: 20.0,
-                        vertical: 20,
+                        vertical: 20.0,
                       ),
                       decoration: BoxDecoration(
                         color: Colors.white,
@@ -123,10 +158,9 @@ class GameScreen extends ConsumerWidget {
                   ),
                 ),
               ),
-              const SizedBox(height: 30),
-              // 하단 숫자 패드
+              const SizedBox(height: 20),
               const NumberPad(),
-              const SizedBox(height: 40),
+              const SizedBox(height: 30),
             ],
           );
         },
@@ -140,12 +174,12 @@ class GameScreen extends ConsumerWidget {
     final selectedCell = ref.watch(selectedCellProvider);
 
     return GridView.builder(
-      physics: const NeverScrollableScrollPhysics(), // 스크롤 방지
+      physics: const NeverScrollableScrollPhysics(),
       padding: EdgeInsets.zero,
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 9,
         childAspectRatio: 1.0,
-        crossAxisSpacing: 0, // 간격을 0으로! (테두리로만 구분)
+        crossAxisSpacing: 0,
         mainAxisSpacing: 0,
       ),
       itemCount: 81,
@@ -154,10 +188,8 @@ class GameScreen extends ConsumerWidget {
         final col = index % 9;
         final cell = cells[row][col];
 
-        // 1. 선택된 칸
         final isSelected = selectedCell?.row == row && selectedCell?.col == col;
 
-        // 2. 연관된 칸 (같은 가로, 세로, 3x3 박스 내에 있는 칸들 하이라이트)
         final isRelated =
             selectedCell != null &&
             !isSelected &&
@@ -166,7 +198,6 @@ class GameScreen extends ConsumerWidget {
                 (selectedCell.row ~/ 3 == row ~/ 3 &&
                     selectedCell.col ~/ 3 == col ~/ 3));
 
-        // 3. 3x3 테두리 굵기 계산 (수학의 마법!)
         final topBorder = (row % 3 == 0) ? 2.0 : 0.5;
         final leftBorder = (col % 3 == 0) ? 2.0 : 0.5;
         final rightBorder = (col == 8) ? 2.0 : 0.0;
@@ -176,7 +207,6 @@ class GameScreen extends ConsumerWidget {
           onTap: () => ref.read(selectedCellProvider.notifier).update(row, col),
           child: Container(
             decoration: BoxDecoration(
-              // 배경색 로직 (선택됨 > 연관됨 > 기본힌트 > 빈칸)
               color: isSelected
                   ? Colors.blue[200]
                   : (isRelated
@@ -198,7 +228,6 @@ class GameScreen extends ConsumerWidget {
                   : cell.currentValue.toString(),
               style: TextStyle(
                 fontSize: 26,
-                // 기본 주어진 숫자는 까맣고 두껍게, 내가 쓴 숫자는 파랗고 살짝 얇게
                 fontWeight: cell.isGiven ? FontWeight.w800 : FontWeight.w500,
                 color: cell.isGiven ? Colors.black87 : Colors.blue[700],
               ),
@@ -210,12 +239,88 @@ class GameScreen extends ConsumerWidget {
   }
 }
 
+class VsProgressWidget extends StatelessWidget {
+  final double myProgress;
+  final double opProgress;
+
+  const VsProgressWidget({
+    super.key,
+    required this.myProgress,
+    required this.opProgress,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 12.0),
+      child: Column(
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                '나 (Me)',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: Colors.blue[700],
+                ),
+              ),
+              Text(
+                '${(myProgress * 100).toInt()}%',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: Colors.blue[700],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          LinearProgressIndicator(
+            value: myProgress,
+            color: Colors.blue,
+            backgroundColor: Colors.blue[100],
+            minHeight: 10,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          const SizedBox(height: 16),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                '상대방 (Opponent)',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: Colors.red[700],
+                ),
+              ),
+              Text(
+                '${(opProgress * 100).toInt()}%',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: Colors.red[700],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          LinearProgressIndicator(
+            value: opProgress,
+            color: Colors.redAccent,
+            backgroundColor: Colors.red[100],
+            minHeight: 10,
+            borderRadius: BorderRadius.circular(8),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class TimerWidget extends ConsumerWidget {
   const TimerWidget({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // timerNotifierProvider만 구독(Subscribe)
     final seconds = ref.watch(timerProvider);
 
     final minutesStr = (seconds ~/ 60).toString().padLeft(2, '0');
