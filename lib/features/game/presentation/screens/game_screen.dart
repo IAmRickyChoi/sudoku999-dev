@@ -2,6 +2,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:sudoku_999/features/game/domain/entities/difficulty.dart';
+import 'package:sudoku_999/features/game/domain/entities/game_session.dart';
+import 'package:sudoku_999/features/game/domain/entities/game_status.dart';
 import 'package:sudoku_999/features/game/presentation/providers/game_notifier.dart';
 import 'package:sudoku_999/features/game/presentation/providers/game_providers.dart';
 import 'package:sudoku_999/features/game/presentation/providers/timer_provider.dart';
@@ -11,10 +13,67 @@ import 'package:sudoku_999/features/game/presentation/screens/number_pad.dart';
 class GameScreen extends ConsumerWidget {
   const GameScreen({super.key});
 
+  // 성공/실패 결과 다이얼로그 (結果表示ダイアログ)
+  void _showResultDialog(BuildContext context, bool isSuccess) {
+    showDialog(
+      context: context,
+      barrierDismissible: false, // 바깥 영역 터치로 못 닫게 방어
+      builder: (context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          title: Text(
+            isSuccess ? '🎉 성공 (Success)!' : '💀 실패 (Game Over)',
+            style: TextStyle(
+              color: isSuccess ? Colors.green : Colors.redAccent,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          content: Text(
+            isSuccess
+                ? '모든 칸을 완벽하게 채웠습니다!\n훌륭합니다!'
+                : '어딘가 틀린 숫자가 있습니다.\n아쉽지만 이번 게임은 실패입니다.',
+            style: const TextStyle(fontSize: 16),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop(); // 다이얼로그만 닫고 보드판 구경하기
+              },
+              child: const Text('보드 확인하기'),
+            ),
+            FilledButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                context.pop(); // 메인 메뉴로 나가기
+              },
+              child: const Text('메뉴로 돌아가기'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final gameStatus = ref.watch(gameProvider);
     final vsState = ref.watch(vsProvider);
+
+    // 상태가 변화했을 때 다이얼로그를 띄워주는 리스너
+    ref.listen<AsyncValue<GameSession?>>(gameProvider, (prev, next) {
+      final prevStatus = prev?.value?.status;
+      final nextStatus = next.value?.status;
+
+      if (prevStatus != nextStatus && nextStatus != null) {
+        if (nextStatus == GameStatus.complete) {
+          _showResultDialog(context, true);
+        } else if (nextStatus == GameStatus.gameOver) {
+          _showResultDialog(context, false);
+        }
+      }
+    });
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FA),
@@ -29,7 +88,7 @@ class GameScreen extends ConsumerWidget {
         ),
         title: const Text(
           'Clean Sudoku',
-          style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1.2),
+          style: TextStyle(fontWeight: FontWeight.bold),
         ),
         centerTitle: true,
         backgroundColor: Colors.transparent,
@@ -53,33 +112,18 @@ class GameScreen extends ConsumerWidget {
             if (vsState.status == VsStatus.matched) {
               return const Center(child: CircularProgressIndicator());
             }
-
             return Center(
               child: FilledButton.icon(
-                style: FilledButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 32,
-                    vertical: 16,
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                ),
                 onPressed: () =>
                     ref.read(gameProvider.notifier).loadSavedGame(),
                 icon: const Icon(Icons.play_arrow_rounded),
-                label: const Text(
-                  '싱글 플레이 이어하기',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                ),
+                label: const Text('싱글 플레이 이어하기'),
               ),
             );
           }
 
-          // 화면 진행도 계산: 빈칸 기준 (UI表示用の計算)
           int totalEmptyCells = 0;
           int filledEmptyCells = 0;
-
           for (var row in session.board.cells) {
             for (var cell in row) {
               if (!cell.isGiven) {
@@ -91,10 +135,9 @@ class GameScreen extends ConsumerWidget {
             }
           }
 
-          double myProgress = 0.0;
-          if (totalEmptyCells > 0) {
-            myProgress = filledEmptyCells / totalEmptyCells.toDouble();
-          }
+          double myProgress = totalEmptyCells > 0
+              ? filledEmptyCells / totalEmptyCells.toDouble()
+              : 0.0;
           final double opProgress = vsState.opponentProgress / 100.0;
 
           return Column(
@@ -109,28 +152,8 @@ class GameScreen extends ConsumerWidget {
                     horizontal: 24.0,
                   ),
                   child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Row(
-                        children: [
-                          Icon(
-                            Icons.close_rounded,
-                            color: Colors.red[400],
-                            size: 24,
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            'Mistakes : ${session.mistakes} / 3',
-                            style: const TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.black54,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const TimerWidget(),
-                    ],
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: const [TimerWidget()],
                   ),
                 ),
 
@@ -141,7 +164,7 @@ class GameScreen extends ConsumerWidget {
                     child: Container(
                       margin: const EdgeInsets.symmetric(
                         horizontal: 20.0,
-                        vertical: 20.0,
+                        vertical: 10.0,
                       ),
                       decoration: BoxDecoration(
                         color: Colors.white,
@@ -153,7 +176,7 @@ class GameScreen extends ConsumerWidget {
                           ),
                         ],
                       ),
-                      child: _buildSudokuGrid(session.board.cells, ref),
+                      child: _buildSudokuGrid(session, ref),
                     ),
                   ),
                 ),
@@ -170,8 +193,9 @@ class GameScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildSudokuGrid(List<List<dynamic>> cells, WidgetRef ref) {
+  Widget _buildSudokuGrid(GameSession session, WidgetRef ref) {
     final selectedCell = ref.watch(selectedCellProvider);
+    final cells = session.board.cells;
 
     return GridView.builder(
       physics: const NeverScrollableScrollPhysics(),
@@ -189,7 +213,6 @@ class GameScreen extends ConsumerWidget {
         final cell = cells[row][col];
 
         final isSelected = selectedCell?.row == row && selectedCell?.col == col;
-
         final isRelated =
             selectedCell != null &&
             !isSelected &&
@@ -229,7 +252,12 @@ class GameScreen extends ConsumerWidget {
               style: TextStyle(
                 fontSize: 26,
                 fontWeight: cell.isGiven ? FontWeight.w800 : FontWeight.w500,
-                color: cell.isGiven ? Colors.black87 : Colors.blue[700],
+                color: cell.isGiven
+                    ? Colors.black87
+                    : (session.status == GameStatus.gameOver &&
+                          cell.currentValue != cell.answer)
+                    ? Colors.red[500]
+                    : Colors.blue[700],
               ),
             ),
           ),
@@ -239,6 +267,11 @@ class GameScreen extends ConsumerWidget {
   }
 }
 
+// -------------------------------------------------------------
+// 👇 아래쪽이 날아갔던 위젯들입니다! 이제 지워지지 않고 잘 붙어있습니다.
+// -------------------------------------------------------------
+
+// VS 모드 전용 프로그레스 바 위젯 (VSモード専用UI)
 class VsProgressWidget extends StatelessWidget {
   final double myProgress;
   final double opProgress;
@@ -316,6 +349,7 @@ class VsProgressWidget extends StatelessWidget {
   }
 }
 
+// 상단 타이머 위젯 (タイマーウィジェット)
 class TimerWidget extends ConsumerWidget {
   const TimerWidget({super.key});
 

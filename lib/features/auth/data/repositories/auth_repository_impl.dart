@@ -13,9 +13,10 @@ class AuthRepositoryImpl implements AuthRepository {
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({'username': username, 'password': password}),
     );
-
+    print(response);
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body);
+      print("succes");
       return User(username: data['username'], token: data['token']);
     } else {
       throw Exception('Login failed');

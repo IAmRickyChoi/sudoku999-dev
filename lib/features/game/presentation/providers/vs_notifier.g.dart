@@ -40,7 +40,7 @@ final class VsNotifierProvider extends $NotifierProvider<VsNotifier, VsState> {
   }
 }
 
-String _$vsNotifierHash() => r'08b4ad1d0b8842b4aaab3504bc161cb302033e14';
+String _$vsNotifierHash() => r'3ad0849dd6c4787474b48012509db69614656bb5';
 
 abstract class _$VsNotifier extends $Notifier<VsState> {
   VsState build();

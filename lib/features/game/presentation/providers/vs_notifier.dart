@@ -4,14 +4,12 @@ import 'package:sudoku_999/features/game/data/repositories/vs_repository.dart';
 
 part 'vs_notifier.g.dart';
 
-// VS 모드의 현재 상태를 나타내는 열거형 (列挙型, れっきょがた)
 enum VsStatus { disconnected, waiting, matched }
 
-// 상태를 담는 객체 (状態オブジェクト)
 class VsState {
   final VsStatus status;
   final int opponentProgress;
-  final int? seed; // 서버에서 받은 동일한 퍼즐용 시드값
+  final int? seed;
 
   VsState({
     this.status = VsStatus.disconnected,
@@ -34,33 +32,35 @@ class VsNotifier extends _$VsNotifier {
 
   @override
   VsState build() {
-    // 프로바이더가 파기될 때 웹소켓 연결도 안전하게 해제 (メモリリーク防止)
     ref.onDispose(() {
       _repository.disconnect();
     });
     return VsState();
   }
 
-  // 매치메이킹 시작 (マッチメイキング開始)
   void startMatchmaking(String username) {
     state = state.copyWith(status: VsStatus.waiting, opponentProgress: 0);
     _repository.connect(username);
 
-    // 서버로부터 수신되는 메시지 리스닝 (リスニング)
     _repository.messageStream?.listen(
       (message) {
         final data = jsonDecode(message);
 
         if (data['type'] == 'matched') {
-          // 매칭이 성사되면 시드값을 받고 상태를 matched로 변경
-          state = state.copyWith(status: VsStatus.matched, seed: data['seed']);
+          // [핵심 복구] 웹(크롬)에서 큰 숫자가 double로 들어올 때 앱이 터지는 것을 방지
+          final dynamic rawSeed = data['seed'];
+          final int seedValue = (rawSeed is num) ? rawSeed.toInt() : 0;
+
+          state = state.copyWith(status: VsStatus.matched, seed: seedValue);
         } else if (data['type'] == 'progress') {
-          // 상대방의 진행도가 도착하면 업데이트 (UI에 반영됨)
-          state = state.copyWith(opponentProgress: data['percent']);
+          // 진행도(percent) 역시 방어 코드 적용
+          final dynamic rawPercent = data['percent'];
+          final int percentValue = (rawPercent is num) ? rawPercent.toInt() : 0;
+
+          state = state.copyWith(opponentProgress: percentValue);
         }
       },
       onDone: () {
-        // 서버와 연결이 끊어졌을 때의 처리
         state = state.copyWith(status: VsStatus.disconnected);
       },
       onError: (error) {
@@ -69,16 +69,14 @@ class VsNotifier extends _$VsNotifier {
     );
   }
 
-  // 내 진행도를 서버로 전송
   void sendMyProgress(int currentProgressPercent) {
     if (state.status == VsStatus.matched) {
       _repository.sendProgress(currentProgressPercent);
     }
   }
 
-  // 대기 취소 및 연결 해제
   void disconnect() {
     _repository.disconnect();
-    state = VsState(); // 초기 상태로 리셋
+    state = VsState();
   }
 }

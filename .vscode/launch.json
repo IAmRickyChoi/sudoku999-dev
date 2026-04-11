@@ -1,25 +1,32 @@
 {
-    // Use IntelliSense to learn about possible attributes.
-    // Hover to view descriptions of existing attributes.
-    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "sudoku_999",
-            "request": "launch",
-            "type": "dart"
-        },
-        {
-            "name": "sudoku_999 (profile mode)",
+            "name": "iPhone", // 대문자로 통일
             "request": "launch",
             "type": "dart",
-            "flutterMode": "profile"
+            "args": [
+                "-d",
+                "iphone"
+            ] // 특정 기기를 명시하는 것이 안전합니다
         },
         {
-            "name": "sudoku_999 (release mode)",
+            "name": "sudoku_999 (Chrome)",
             "request": "launch",
             "type": "dart",
-            "flutterMode": "release"
+            "args": [
+                "-d",
+                "chrome"
+            ]
+        }
+    ],
+    "compounds": [
+        {
+            "name": "All Devices",
+            "configurations": [
+                "iPhone", // configurations의 name과 완벽히 일치해야 함
+                "sudoku_999 (Chrome)"
+            ]
         }
     ]
 }
