@@ -1,3 +1,4 @@
+// (임포트 부분 기존과 동일)
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -13,11 +14,10 @@ import 'package:sudoku_999/features/game/presentation/screens/number_pad.dart';
 class GameScreen extends ConsumerWidget {
   const GameScreen({super.key});
 
-  // 성공/실패 결과 다이얼로그 (結果表示ダイアログ)
   void _showResultDialog(BuildContext context, bool isSuccess) {
     showDialog(
       context: context,
-      barrierDismissible: false, // 바깥 영역 터치로 못 닫게 방어
+      barrierDismissible: false,
       builder: (context) {
         return AlertDialog(
           shape: RoundedRectangleBorder(
@@ -39,14 +39,14 @@ class GameScreen extends ConsumerWidget {
           actions: [
             TextButton(
               onPressed: () {
-                Navigator.of(context).pop(); // 다이얼로그만 닫고 보드판 구경하기
+                Navigator.of(context).pop();
               },
               child: const Text('보드 확인하기'),
             ),
             FilledButton(
               onPressed: () {
                 Navigator.of(context).pop();
-                context.pop(); // 메인 메뉴로 나가기
+                context.pop();
               },
               child: const Text('메뉴로 돌아가기'),
             ),
@@ -61,7 +61,6 @@ class GameScreen extends ConsumerWidget {
     final gameStatus = ref.watch(gameProvider);
     final vsState = ref.watch(vsProvider);
 
-    // 상태가 변화했을 때 다이얼로그를 띄워주는 리스너
     ref.listen<AsyncValue<GameSession?>>(gameProvider, (prev, next) {
       final prevStatus = prev?.value?.status;
       final nextStatus = next.value?.status;
@@ -72,6 +71,48 @@ class GameScreen extends ConsumerWidget {
         } else if (nextStatus == GameStatus.gameOver) {
           _showResultDialog(context, false);
         }
+      }
+    });
+
+    // 👇 [추가] 상대방 탈주를 감지하는 강력한 리스너!
+    ref.listen<VsState>(vsProvider, (prev, next) {
+      if (prev?.status == VsStatus.matched &&
+          next.status == VsStatus.opponentLeft) {
+        // 내 게임 타이머 정지
+        ref.read(timerProvider.notifier).pause();
+
+        showDialog(
+          context: context,
+          barrierDismissible: false, // 터치로 닫기 방지
+          builder: (context) {
+            return AlertDialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              title: const Text(
+                '🎉 부전승 (Victory)!',
+                style: TextStyle(
+                  color: Colors.green,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              content: const Text('상대방이 게임에서 도망갔습니다!\n당신의 깔끔한 승리입니다! 😎'),
+              actions: [
+                FilledButton(
+                  onPressed: () {
+                    // 다이얼로그 닫고
+                    Navigator.of(context).pop();
+                    // 웹소켓 완전히 끊어주고
+                    ref.read(vsProvider.notifier).disconnect();
+                    // 메인 메뉴로 강제 추방(이동)
+                    context.pop();
+                  },
+                  child: const Text('메인 메뉴로'),
+                ),
+              ],
+            );
+          },
+        );
       }
     });
 

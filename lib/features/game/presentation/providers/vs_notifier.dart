@@ -4,7 +4,8 @@ import 'package:sudoku_999/features/game/data/repositories/vs_repository.dart';
 
 part 'vs_notifier.g.dart';
 
-enum VsStatus { disconnected, waiting, matched }
+// [수정] 상대방 도망침(opponentLeft) 상태 추가
+enum VsStatus { disconnected, waiting, matched, opponentLeft }
 
 class VsState {
   final VsStatus status;
@@ -47,21 +48,24 @@ class VsNotifier extends _$VsNotifier {
         final data = jsonDecode(message);
 
         if (data['type'] == 'matched') {
-          // [핵심 복구] 웹(크롬)에서 큰 숫자가 double로 들어올 때 앱이 터지는 것을 방지
           final dynamic rawSeed = data['seed'];
           final int seedValue = (rawSeed is num) ? rawSeed.toInt() : 0;
-
           state = state.copyWith(status: VsStatus.matched, seed: seedValue);
         } else if (data['type'] == 'progress') {
-          // 진행도(percent) 역시 방어 코드 적용
           final dynamic rawPercent = data['percent'];
           final int percentValue = (rawPercent is num) ? rawPercent.toInt() : 0;
-
           state = state.copyWith(opponentProgress: percentValue);
+        }
+        // 👇 [추가] 서버에서 상대방 도망 메시지를 받으면 상태 변경!
+        else if (data['type'] == 'opponent_left') {
+          state = state.copyWith(status: VsStatus.opponentLeft);
         }
       },
       onDone: () {
-        state = state.copyWith(status: VsStatus.disconnected);
+        // 이미 opponentLeft 처리된 게 아니라면 연결 끊김으로 처리
+        if (state.status != VsStatus.opponentLeft) {
+          state = state.copyWith(status: VsStatus.disconnected);
+        }
       },
       onError: (error) {
         state = state.copyWith(status: VsStatus.disconnected);
