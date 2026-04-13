@@ -41,7 +41,7 @@ final class AuthNotifierProvider
   }
 }
 
-String _$authNotifierHash() => r'780bf8b6529363a505fd232b113205cb65776370';
+String _$authNotifierHash() => r'd7b16f628094f326d80f3a9bd0a06fbfffe9150a';
 
 abstract class _$AuthNotifier extends $Notifier<AsyncValue<User?>> {
   AsyncValue<User?> build();
@@ -54,6 +54,51 @@ abstract class _$AuthNotifier extends $Notifier<AsyncValue<User?>> {
             as $ClassProviderElement<
               AnyNotifier<AsyncValue<User?>, AsyncValue<User?>>,
               AsyncValue<User?>,
+              Object?,
+              Object?
+            >;
+    element.handleCreate(ref, build);
+  }
+}
+
+@ProviderFor(UserStats)
+final userStatsProvider = UserStatsProvider._();
+
+final class UserStatsProvider
+    extends $AsyncNotifierProvider<UserStats, Map<String, int>> {
+  UserStatsProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'userStatsProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$userStatsHash();
+
+  @$internal
+  @override
+  UserStats create() => UserStats();
+}
+
+String _$userStatsHash() => r'1d384b663a7ee8ee37483b748601eaa311679645';
+
+abstract class _$UserStats extends $AsyncNotifier<Map<String, int>> {
+  FutureOr<Map<String, int>> build();
+  @$mustCallSuper
+  @override
+  void runBuild() {
+    final ref =
+        this.ref as $Ref<AsyncValue<Map<String, int>>, Map<String, int>>;
+    final element =
+        ref.element
+            as $ClassProviderElement<
+              AnyNotifier<AsyncValue<Map<String, int>>, Map<String, int>>,
+              AsyncValue<Map<String, int>>,
               Object?,
               Object?
             >;

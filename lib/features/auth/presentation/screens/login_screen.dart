@@ -41,13 +41,42 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             if (authState.isLoading)
               const CircularProgressIndicator()
             else
-              ElevatedButton(
-                onPressed: () {
-                  ref
-                      .read(authProvider.notifier)
-                      .login(_idController.text, _pwController.text);
-                },
-                child: const Text('Login (ログイン)'),
+              Column(
+                children: [
+                  FilledButton(
+                    onPressed: () => ref
+                        .read(authProvider.notifier)
+                        .login(_idController.text, _pwController.text),
+                    style: FilledButton.styleFrom(
+                      minimumSize: const Size(double.infinity, 50),
+                    ),
+                    child: const Text(
+                      'Login (로그인)',
+                      style: TextStyle(fontSize: 16),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  OutlinedButton(
+                    onPressed: () => ref
+                        .read(authProvider.notifier)
+                        .register(_idController.text, _pwController.text),
+                    style: OutlinedButton.styleFrom(
+                      minimumSize: const Size(double.infinity, 50),
+                    ),
+                    child: const Text(
+                      'Sign Up (회원가입)',
+                      style: TextStyle(fontSize: 16),
+                    ),
+                  ),
+                  if (authState.hasError)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 16.0),
+                      child: Text(
+                        '오류: 아이디나 비밀번호를 확인하세요.',
+                        style: TextStyle(color: Colors.red[400]),
+                      ),
+                    ),
+                ],
               ),
           ],
         ),

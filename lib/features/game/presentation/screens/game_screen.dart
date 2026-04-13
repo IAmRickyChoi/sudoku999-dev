@@ -1,7 +1,7 @@
-// (임포트 부분 기존과 동일)
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:sudoku_999/features/auth/presentation/providers/auth_notifier.dart';
 import 'package:sudoku_999/features/game/domain/entities/difficulty.dart';
 import 'package:sudoku_999/features/game/domain/entities/game_session.dart';
 import 'package:sudoku_999/features/game/domain/entities/game_status.dart';
@@ -14,7 +14,19 @@ import 'package:sudoku_999/features/game/presentation/screens/number_pad.dart';
 class GameScreen extends ConsumerWidget {
   const GameScreen({super.key});
 
-  void _showResultDialog(BuildContext context, bool isSuccess) {
+  // 👇 중복되었던 함수를 하나로 깔끔하게 정리했습니다!
+  void _showResultDialog(
+    BuildContext context,
+    bool isSuccess,
+    bool isVsMode,
+    WidgetRef ref,
+  ) {
+    if (isVsMode) {
+      ref
+          .read(userStatsProvider.notifier)
+          .recordResult(isSuccess ? 'win' : 'loss');
+    }
+
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -38,9 +50,7 @@ class GameScreen extends ConsumerWidget {
           ),
           actions: [
             TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
+              onPressed: () => Navigator.of(context).pop(),
               child: const Text('보드 확인하기'),
             ),
             FilledButton(
@@ -61,29 +71,33 @@ class GameScreen extends ConsumerWidget {
     final gameStatus = ref.watch(gameProvider);
     final vsState = ref.watch(vsProvider);
 
+    final isVsMode =
+        vsState.status == VsStatus.matched ||
+        vsState.status == VsStatus.opponentLeft;
+
     ref.listen<AsyncValue<GameSession?>>(gameProvider, (prev, next) {
       final prevStatus = prev?.value?.status;
       final nextStatus = next.value?.status;
 
       if (prevStatus != nextStatus && nextStatus != null) {
         if (nextStatus == GameStatus.complete) {
-          _showResultDialog(context, true);
+          _showResultDialog(context, true, isVsMode, ref);
         } else if (nextStatus == GameStatus.gameOver) {
-          _showResultDialog(context, false);
+          _showResultDialog(context, false, isVsMode, ref);
         }
       }
     });
 
-    // 👇 [추가] 상대방 탈주를 감지하는 강력한 리스너!
     ref.listen<VsState>(vsProvider, (prev, next) {
       if (prev?.status == VsStatus.matched &&
           next.status == VsStatus.opponentLeft) {
-        // 내 게임 타이머 정지
         ref.read(timerProvider.notifier).pause();
+
+        ref.read(userStatsProvider.notifier).recordResult('win');
 
         showDialog(
           context: context,
-          barrierDismissible: false, // 터치로 닫기 방지
+          barrierDismissible: false,
           builder: (context) {
             return AlertDialog(
               shape: RoundedRectangleBorder(
@@ -100,11 +114,8 @@ class GameScreen extends ConsumerWidget {
               actions: [
                 FilledButton(
                   onPressed: () {
-                    // 다이얼로그 닫고
                     Navigator.of(context).pop();
-                    // 웹소켓 완전히 끊어주고
                     ref.read(vsProvider.notifier).disconnect();
-                    // 메인 메뉴로 강제 추방(이동)
                     context.pop();
                   },
                   child: const Text('메인 메뉴로'),
@@ -135,7 +146,7 @@ class GameScreen extends ConsumerWidget {
         backgroundColor: Colors.transparent,
         elevation: 0,
         actions: [
-          if (vsState.status != VsStatus.matched)
+          if (!isVsMode)
             IconButton(
               icon: const Icon(Icons.refresh_rounded, size: 28),
               onPressed: () {
@@ -150,9 +161,8 @@ class GameScreen extends ConsumerWidget {
       body: gameStatus.when(
         data: (session) {
           if (session == null) {
-            if (vsState.status == VsStatus.matched) {
+            if (isVsMode)
               return const Center(child: CircularProgressIndicator());
-            }
             return Center(
               child: FilledButton.icon(
                 onPressed: () =>
@@ -184,7 +194,7 @@ class GameScreen extends ConsumerWidget {
           return Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              if (vsState.status == VsStatus.matched)
+              if (isVsMode)
                 VsProgressWidget(myProgress: myProgress, opProgress: opProgress)
               else
                 Padding(
@@ -197,7 +207,6 @@ class GameScreen extends ConsumerWidget {
                     children: const [TimerWidget()],
                   ),
                 ),
-
               Expanded(
                 child: Center(
                   child: AspectRatio(
@@ -205,7 +214,7 @@ class GameScreen extends ConsumerWidget {
                     child: Container(
                       margin: const EdgeInsets.symmetric(
                         horizontal: 20.0,
-                        vertical: 10.0,
+                        vertical: 20.0,
                       ),
                       decoration: BoxDecoration(
                         color: Colors.white,
@@ -308,21 +317,14 @@ class GameScreen extends ConsumerWidget {
   }
 }
 
-// -------------------------------------------------------------
-// 👇 아래쪽이 날아갔던 위젯들입니다! 이제 지워지지 않고 잘 붙어있습니다.
-// -------------------------------------------------------------
-
-// VS 모드 전용 프로그레스 바 위젯 (VSモード専用UI)
 class VsProgressWidget extends StatelessWidget {
   final double myProgress;
   final double opProgress;
-
   const VsProgressWidget({
     super.key,
     required this.myProgress,
     required this.opProgress,
   });
-
   @override
   Widget build(BuildContext context) {
     return Padding(
@@ -390,17 +392,13 @@ class VsProgressWidget extends StatelessWidget {
   }
 }
 
-// 상단 타이머 위젯 (タイマーウィジェット)
 class TimerWidget extends ConsumerWidget {
   const TimerWidget({super.key});
-
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final seconds = ref.watch(timerProvider);
-
     final minutesStr = (seconds ~/ 60).toString().padLeft(2, '0');
     final secondsStr = (seconds % 60).toString().padLeft(2, '0');
-
     return Row(
       children: [
         Icon(Icons.timer_outlined, color: Colors.blueGrey[600], size: 24),

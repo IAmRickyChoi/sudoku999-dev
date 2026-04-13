@@ -4,7 +4,6 @@ import 'package:sudoku_999/features/game/domain/entities/difficulty.dart';
 import 'package:sudoku_999/features/game/domain/entities/game_session.dart';
 import 'package:sudoku_999/features/game/domain/entities/game_status.dart';
 import 'package:sudoku_999/features/game/domain/entities/sudoku_board.dart';
-import 'package:sudoku_999/features/game/domain/use_cases/check_answer_usecase.dart';
 import 'package:sudoku_999/features/game/presentation/providers/game_providers.dart';
 import 'package:sudoku_999/features/game/presentation/providers/timer_provider.dart';
 import 'package:sudoku_999/features/game/presentation/providers/vs_notifier.dart';
@@ -15,7 +14,7 @@ part 'game_notifier.g.dart';
 @Riverpod(keepAlive: true)
 class GameNotifier extends _$GameNotifier {
   @override
-  FutureOr<GameSession?> build() async {
+  FutureOr<GameSession?> build() {
     // 앱 시작 시 무단으로 덮어쓰는 것을 방지
     return null;
   }

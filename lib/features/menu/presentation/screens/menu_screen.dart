@@ -9,7 +9,6 @@ import 'package:sudoku_999/features/game/presentation/providers/vs_notifier.dart
 class MenuScreen extends ConsumerWidget {
   const MenuScreen({super.key});
 
-  // 싱글 플레이 난이도 선택 다이얼로그 (難易度選択)
   Future<Difficulty?> _showDifficultyDialog(BuildContext context) async {
     return showDialog<Difficulty>(
       context: context,
@@ -47,16 +46,12 @@ class MenuScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final user = ref.watch(authProvider).value;
     final vsState = ref.watch(vsProvider);
+    final statsAsync = ref.watch(userStatsProvider); // [신규] 승률 데이터
 
-    // 👇 [가장 중요!!!] 이 코드가 지워지면 매칭이 성공해도 영원히 로딩만 돕니다! (画面遷移リスナー)
     ref.listen<VsState>(vsProvider, (previous, next) {
       if (previous?.status == VsStatus.waiting &&
           next.status == VsStatus.matched) {
-        // 1. "매칭 중..." 다이얼로그 닫기
-        if (Navigator.of(context).canPop()) {
-          Navigator.of(context).pop();
-        }
-        // 2. 서버에서 받은 안전한 시드(Seed)로 게임 생성 후 화면 이동
+        if (Navigator.of(context).canPop()) Navigator.of(context).pop();
         if (next.seed != null) {
           ref
               .read(gameProvider.notifier)
@@ -84,9 +79,54 @@ class MenuScreen extends ConsumerWidget {
               'Welcome, ${user?.username ?? "Guest"}!',
               style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
             ),
+            const SizedBox(height: 16),
+
+            // 👇 [신규] 승률과 전적을 보여주는 위젯
+            statsAsync.when(
+              data: (stats) {
+                final wins = stats['wins'] ?? 0;
+                final losses = stats['losses'] ?? 0;
+                final total = wins + losses;
+                final winRate = total > 0
+                    ? ((wins / total) * 100).toStringAsFixed(1)
+                    : "0.0";
+
+                return Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 12,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.blue[50],
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Column(
+                    children: [
+                      Text(
+                        '온라인 전적: $wins승 $losses패',
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: Colors.blueGrey[800],
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        '승률: $winRate%',
+                        style: TextStyle(
+                          fontSize: 20,
+                          color: Colors.blue[700],
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
+              loading: () => const CircularProgressIndicator(),
+              error: (_, __) => const Text('전적을 불러올 수 없습니다.'),
+            ),
             const SizedBox(height: 40),
 
-            // 1. 새 싱글 게임 시작 (난이도 선택)
             FilledButton.icon(
               onPressed: () async {
                 final selectedDifficulty = await _showDifficultyDialog(context);
@@ -95,9 +135,7 @@ class MenuScreen extends ConsumerWidget {
                   await ref
                       .read(gameProvider.notifier)
                       .startGame(seed, selectedDifficulty);
-                  if (context.mounted) {
-                    context.push('/game');
-                  }
+                  if (context.mounted) context.push('/game');
                 }
               },
               icon: const Icon(Icons.add_box_rounded),
@@ -111,13 +149,10 @@ class MenuScreen extends ConsumerWidget {
             ),
             const SizedBox(height: 20),
 
-            // 2. 기존 게임 이어하기
             FilledButton.icon(
               onPressed: () async {
                 await ref.read(gameProvider.notifier).loadSavedGame();
-                if (context.mounted) {
-                  context.push('/game');
-                }
+                if (context.mounted) context.push('/game');
               },
               icon: const Icon(Icons.save_as_rounded),
               label: const Text('Continue Game (이어하기)'),
@@ -131,14 +166,13 @@ class MenuScreen extends ConsumerWidget {
             ),
             const SizedBox(height: 40),
 
-            // 3. 실시간 온라인 대전
             FilledButton.tonalIcon(
               onPressed: () {
                 if (user != null) {
                   ref.read(vsProvider.notifier).startMatchmaking(user.username);
                   showDialog(
                     context: context,
-                    barrierDismissible: false, // 바깥 영역 터치로 못 닫게 방어
+                    barrierDismissible: false,
                     builder: (context) {
                       return AlertDialog(
                         title: const Text('매칭 중...'),
