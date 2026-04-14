@@ -38,7 +38,6 @@ class AuthNotifier extends _$AuthNotifier {
   }
 }
 
-// 👇 [핵심 수정] 승률 전용 프로바이더를 Notifier로 업그레이드!
 @Riverpod(keepAlive: true)
 class UserStats extends _$UserStats {
   @override
@@ -54,7 +53,7 @@ class UserStats extends _$UserStats {
     final user = ref.read(authProvider).value;
     if (user == null) return;
 
-    // 1. [Optimistic Update] 서버 응답을 기다리지 않고 UI(숫자)부터 즉시 1 올려버립니다!
+    // UI 즉시 업데이트 (낙관적 업데이트)
     if (state.hasValue) {
       final currentWins = state.value!['wins'] ?? 0;
       final currentLosses = state.value!['losses'] ?? 0;
@@ -64,7 +63,7 @@ class UserStats extends _$UserStats {
       });
     }
 
-    // 2. 백그라운드에서 조용히 서버로 저장 요청 (사용자는 이미 갱신된 UI를 보고 있음)
+    // 서버로 전적 전송
     try {
       final repository = AuthRepositoryImpl();
       await repository.recordResult(user.username, result);

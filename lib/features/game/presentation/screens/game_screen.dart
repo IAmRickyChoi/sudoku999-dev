@@ -14,7 +14,6 @@ import 'package:sudoku_999/features/game/presentation/screens/number_pad.dart';
 class GameScreen extends ConsumerWidget {
   const GameScreen({super.key});
 
-  // 👇 중복되었던 함수를 하나로 깔끔하게 정리했습니다!
   void _showResultDialog(
     BuildContext context,
     bool isSuccess,
@@ -55,6 +54,10 @@ class GameScreen extends ConsumerWidget {
             ),
             FilledButton(
               onPressed: () {
+                // 👇 다이얼로그에서 나갈 때 안전하게 웹소켓 종료
+                if (isVsMode) {
+                  ref.read(vsProvider.notifier).disconnect();
+                }
                 Navigator.of(context).pop();
                 context.pop();
               },
@@ -92,7 +95,6 @@ class GameScreen extends ConsumerWidget {
       if (prev?.status == VsStatus.matched &&
           next.status == VsStatus.opponentLeft) {
         ref.read(timerProvider.notifier).pause();
-
         ref.read(userStatsProvider.notifier).recordResult('win');
 
         showDialog(
@@ -132,6 +134,17 @@ class GameScreen extends ConsumerWidget {
       appBar: AppBar(
         leading: BackButton(
           onPressed: () {
+            // 👇 [핵심 수정] 뒤로가기를 눌러서 도망가는 경우 즉시 패배 처리!
+            final session = ref.read(gameProvider).value;
+            final isGameEnded =
+                session?.status == GameStatus.complete ||
+                session?.status == GameStatus.gameOver;
+
+            // 아직 게임이 안 끝났는데 매칭 중에 나갔다면 = 탈주 (명시적 패배 기록 발동!)
+            if (vsState.status == VsStatus.matched && !isGameEnded) {
+              ref.read(userStatsProvider.notifier).recordResult('loss');
+            }
+
             if (vsState.status != VsStatus.disconnected) {
               ref.read(vsProvider.notifier).disconnect();
             }
